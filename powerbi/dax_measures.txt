@@ -1,0 +1,114 @@
+//=====================================================================================
+// DAX MEASURES — Business Performance Dashboard (Sample Superstore, public sample dataset)
+// Model: Fact_Sales (one row per order line) + Dim_Date, Dim_Product, Dim_Customer, Dim_Geography, Dim_DiscountBand
+// Create all measures in a dedicated table named "_Measures" (Home > Enter Data > blank table; then hide its column).
+// MEASURE   = calculated on the fly, reacts to slicers/filters, stored as a formula (no data stored)
+// CALC. COLUMN = calculated row by row at refresh time and stored in the table (used for row-level labels/sorting)
+// EXPECTED VALUES with no filters (validated in Python and SQL):
+//   Sales 2,297,200.86 | Profit 286,397.02 | Margin 12.47% | Orders 5,009 | Quantity 37,873 | AOV 458.61 | Avg Discount 15.62% | Avg Ship Days 3.96
+//=====================================================================================
+
+//------------------------------ 1. CORE KPIs (required) --------------------------------
+Total Sales = SUM ( Fact_Sales[Sales] )
+
+Total Profit = SUM ( Fact_Sales[Profit] )
+
+// DISTINCTCOUNT, not COUNTROWS: one order has several lines (9,994 lines but only 5,009 orders)
+Total Orders = DISTINCTCOUNT ( Fact_Sales[Order ID] )
+
+Total Quantity = SUM ( Fact_Sales[Quantity] )
+
+// DIVIDE returns the alternate result (0) instead of an error when the denominator is 0
+Profit Margin = DIVIDE ( [Total Profit], [Total Sales], 0 )
+
+Average Order Value = DIVIDE ( [Total Sales], [Total Orders], 0 )
+
+// Simple average over order lines (matches Python/SQL AVG(discount) = 15.62%)
+Average Discount = AVERAGE ( Fact_Sales[Discount] )
+
+Average Shipping Days = AVERAGE ( Fact_Sales[Shipping Days] )
+
+//------------------------------ 2. SUPPORTING KPIs --------------------------------------
+Total Customers = DISTINCTCOUNT ( Fact_Sales[Customer ID] )
+
+Order Lines = COUNTROWS ( Fact_Sales )
+
+Profit per Order = DIVIDE ( [Total Profit], [Total Orders], 0 )
+
+Loss-Making Lines = CALCULATE ( COUNTROWS ( Fact_Sales ), Fact_Sales[Profit] < 0 )
+
+Loss-Making Lines % = DIVIDE ( [Loss-Making Lines], [Order Lines], 0 )
+
+// Sum of profit on lines that lost money (negative number)
+Total Losses = CALCULATE ( [Total Profit], Fact_Sales[Profit] < 0 )
+
+// Products whose TOTAL profit is below zero under the current filters.
+// The -0.005 threshold ignores floating-point noise (a product summing to -3.6E-15 is break-even, not a loss).
+Loss-Making Products =
+COUNTROWS ( FILTER ( VALUES ( Dim_Product[Product ID] ), [Total Profit] < -0.005 ) )
+
+Loss-Making Customers =
+COUNTROWS ( FILTER ( VALUES ( Dim_Customer[Customer ID] ), [Total Profit] < -0.005 ) )
+
+//------------------------------ 3. SHARE / CONTRIBUTION ---------------------------------
+// ALLSELECTED keeps the user's slicers but ignores the visual's own grouping (e.g. each category's share of the selected total)
+Sales Share % = DIVIDE ( [Total Sales], CALCULATE ( [Total Sales], ALLSELECTED () ), 0 )
+
+Profit Share % = DIVIDE ( [Total Profit], CALCULATE ( [Total Profit], ALLSELECTED () ), 0 )
+
+// Customer contribution: this customer's share of selected sales
+Customer Sales Share % =
+DIVIDE ( [Total Sales], CALCULATE ( [Total Sales], ALLSELECTED ( Dim_Customer ) ), 0 )
+
+//------------------------------ 4. TIME INTELLIGENCE (needs Dim_Date marked as date table) -----
+Sales LY = CALCULATE ( [Total Sales], SAMEPERIODLASTYEAR ( Dim_Date[Date] ) )
+
+Profit LY = CALCULATE ( [Total Profit], SAMEPERIODLASTYEAR ( Dim_Date[Date] ) )
+
+Sales YoY % = IF ( [Sales LY] = 0, BLANK (), DIVIDE ( [Total Sales] - [Sales LY], [Sales LY] ) )
+
+Profit YoY % = IF ( [Profit LY] = 0, BLANK (), DIVIDE ( [Total Profit] - [Profit LY], [Profit LY] ) )
+
+Sales YTD = TOTALYTD ( [Total Sales], Dim_Date[Date] )
+
+Profit YTD = TOTALYTD ( [Total Profit], Dim_Date[Date] )
+
+// 3-month rolling average of monthly sales: total sales of the last 3 months ending at the current month, divided by 3.
+// Use on a line chart with Dim_Date[Year-Month] (or a month-level date) on the axis.
+Sales 3M Rolling Avg =
+DIVIDE (
+    CALCULATE ( [Total Sales], DATESINPERIOD ( Dim_Date[Date], MAX ( Dim_Date[Date] ), -3, MONTH ) ),
+    3
+)
+
+//------------------------------ 5. DISCOUNT ANALYSIS --------------------------------------
+Sales with Discount > 20% = CALCULATE ( [Total Sales], Fact_Sales[Discount] > 0.2 )
+
+Profit on Discount > 20% = CALCULATE ( [Total Profit], Fact_Sales[Discount] > 0.2 )
+
+Share of Sales Discounted > 20% = DIVIDE ( [Sales with Discount > 20%], [Total Sales], 0 )
+
+//------------------------------ 6. SHIPPING (inactive relationship Ship Date -> Dim_Date) ---
+Sales by Ship Date = CALCULATE ( [Total Sales], USERELATIONSHIP ( Fact_Sales[Ship Date], Dim_Date[Date] ) )
+
+//------------------------------ 7. TEXT / FORMAT MEASURES ---------------------------------
+// Conditional-format helper: 1 if margin below the company margin, else 0 (use for red/green data bars)
+Margin Below Average Flag =
+VAR CompanyMargin = CALCULATE ( [Profit Margin], ALL ( Dim_Product ), ALL ( Dim_Geography ), ALL ( Dim_Customer ) )
+RETURN IF ( [Profit Margin] < CompanyMargin, 1, 0 )
+
+// Dynamic KPI subtitle for the Executive Overview
+Headline Insight =
+"Margin " & FORMAT ( [Profit Margin], "0.0%" ) & " on sales of " & FORMAT ( [Total Sales], "$#,##0" ) &
+" | " & FORMAT ( [Loss-Making Lines %], "0.0%" ) & " of order lines lose money"
+
+//------------------------------ 8. CALCULATED COLUMNS (optional, for sorting/labels) --------
+// In Dim_Date (already in the CSV; shown for reference):
+//   Month Sort = Dim_Date[Year] * 100 + Dim_Date[Month Number]
+// In Fact_Sales (already in the CSV as "Is Loss"):
+//   Is Loss = IF ( Fact_Sales[Profit] < 0, 1, 0 )
+
+//------------------------------ 9. ALTERNATIVE DATE TABLE IN DAX (if you prefer not to import Dim_Date.csv) --------
+// Dim_Date = ADDCOLUMNS ( CALENDAR ( DATE ( 2014, 1, 1 ), DATE ( 2017, 12, 31 ) ),
+//     "Year", YEAR ( [Date] ), "Quarter", "Q" & QUARTER ( [Date] ), "Month Number", MONTH ( [Date] ),
+//     "Month Name", FORMAT ( [Date], "mmm" ), "Year-Month", FORMAT ( [Date], "yyyy-mm" ) )

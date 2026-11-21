@@ -1,0 +1,8 @@
+"Test","Statistic","P_value"
+"Spearman discount vs profit",-0.543350182230621,0
+"Pearson discount vs margin",-0.864452285600039,0
+"Welch t-test profit, discount >20% vs <=20%",16.1409994038947,2.29518025923379e-54
+"Kruskal-Wallis profit by discount group",3579.39606919359,0
+"Kruskal-Wallis margin by category",997.01839717018,3.16377708732309e-217
+"Kruskal-Wallis margin by region",237.187980086866,3.86002848723605e-51
+"Kruskal-Wallis margin by segment",9.6288904290059,0.00811172109501221

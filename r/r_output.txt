@@ -1,0 +1,57 @@
+Rows: 9994 | Sales: 2297201 | Profit: 286397 
+                                         Test Statistic    P_value
+1                 Spearman discount vs profit   -0.5434  0.000e+00
+2                  Pearson discount vs margin   -0.8645  0.000e+00
+3 Welch t-test profit, discount >20% vs <=20%   16.1410  2.295e-54
+4     Kruskal-Wallis profit by discount group 3579.3961  0.000e+00
+5           Kruskal-Wallis margin by category  997.0184 3.164e-217
+6             Kruskal-Wallis margin by region  237.1880  3.860e-51
+7            Kruskal-Wallis margin by segment    9.6289  8.112e-03
+Mean profit per line: >20% = -97.18  <=20% = 49.04 
+
+Linear model margin ~ Discount + Category + Region + Segment + Ship.Mode
+R-squared: 0.804  Adj: 0.803 
+                        Estimate Std. Error   t value Pr(>|t|)
+(Intercept)               0.3055     0.0066   46.4559   0.0000
+Discount                 -1.5460     0.0080 -192.3381   0.0000
+CategoryOffice Supplies   0.1078     0.0041   26.5750   0.0000
+CategoryTechnology        0.0482     0.0051    9.4170   0.0000
+RegionEast                0.0172     0.0046    3.7715   0.0002
+RegionSouth               0.0146     0.0053    2.7843   0.0054
+RegionWest                0.0175     0.0045    3.8833   0.0001
+SegmentCorporate          0.0052     0.0037    1.4155   0.1569
+SegmentHome Office        0.0039     0.0044    0.8923   0.3722
+Ship.ModeSame Day        -0.0011     0.0080   -0.1351   0.8925
+Ship.ModeSecond Class    -0.0066     0.0055   -1.1955   0.2319
+Ship.ModeStandard Class  -0.0081     0.0046   -1.7563   0.0791
+R-squared discount alone: 0.788 
+           Sum Sq  F value share_of_explained_SS
+Discount  1032.85 40060.43                 98.08
+Category    19.62   380.40                  1.86
+Region       0.50     6.53                  0.05
+Segment      0.06     1.11                  0.01
+Ship.Mode    0.09     1.22                  0.01
+Residuals  257.36                          24.44
+
+Forecast accuracy:
+                       Model TestYear   MAE  RMSE  MAPE
+          Naive (last value)     2016 28581 33131 89.42
+              Seasonal naive     2016 12520 15261 25.36
+ Trend + seasonal regression     2016 12699 16549 27.22
+                  ETS (auto)     2016 19026 25192 38.53
+                ARIMA (auto)     2016 19029 25199 38.52
+                   STL + ETS     2016    NA    NA    NA
+          Naive (last value)     2017 39473 44192 97.32
+              Seasonal naive     2017 15468 18986 24.52
+ Trend + seasonal regression     2017 10794 14558 17.25
+                  ETS (auto)     2017 11977 15648 20.70
+                ARIMA (auto)     2017 13335 16148 26.91
+                   STL + ETS     2017 11514 15757 18.34
+                       Model     MAPE
+ Trend + seasonal regression 22.23531
+              Seasonal naive 24.93926
+                  ETS (auto) 29.61330
+                ARIMA (auto) 32.71362
+          Naive (last value) 93.37187
+Best by average MAPE over both folds: Trend + seasonal regression 
+2018 total forecast: 795694  vs 2017 actual: 733215 

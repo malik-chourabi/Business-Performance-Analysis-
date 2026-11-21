@@ -1,0 +1,7 @@
+Discount Band,Band Order
+No discount,1
+1-10%,2
+11-20%,3
+21-30%,4
+31-50%,5
+>50%,6
